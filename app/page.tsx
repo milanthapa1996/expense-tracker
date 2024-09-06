@@ -51,7 +51,7 @@ const generateYearData = (year: number): MonthData[] => {
   }))
 }
 
-export default function ExpenseTracker() {
+export default function Home() {
   const [amount, setAmount] = useState("")
   const [transactionType, setTransactionType] = useState<Transaction['type'] | "">("")
   const [remarks, setRemarks] = useState("")
