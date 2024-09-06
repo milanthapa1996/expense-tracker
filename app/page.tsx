@@ -148,6 +148,7 @@ export default function ExpenseTracker() {
         toast({
           title: "Success",
           description: `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} added successfully`,
+          className:"z-50 bg-white"
         })
       } else {
         throw new Error('Failed to add transaction');
