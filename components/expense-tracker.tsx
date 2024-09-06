@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
@@ -23,26 +23,9 @@ const currencies = {
   GBP: "£",
   JPY: "¥",
   NPR: "₨"
-} as const
-
-type CurrencyCode = keyof typeof currencies
-
-type Transaction = {
-  id: number
-  type: 'income' | 'expense' | 'loan'
-  amount: number
-  remarks: string
-  date: string
 }
 
-type MonthData = {
-  name: string
-  expense: number
-  income: number
-  loan: number
-}
-
-const generateYearData = (year: number): MonthData[] => {
+const generateYearData = (year) => {
   return Array.from({ length: 12 }, (_, i) => ({
     name: new Date(year, i).toLocaleString('default', { month: 'short' }),
     expense: Math.floor(Math.random() * 1000),
@@ -51,11 +34,11 @@ const generateYearData = (year: number): MonthData[] => {
   }))
 }
 
-export default function ExpenseTracker() {
+export function ExpenseTracker() {
   const [amount, setAmount] = useState("")
-  const [transactionType, setTransactionType] = useState<Transaction['type'] | "">("")
+  const [transactionType, setTransactionType] = useState("")
   const [remarks, setRemarks] = useState("")
-  const [transactions, setTransactions] = useState<Transaction[]>([
+  const [transactions, setTransactions] = useState([
     { id: 1, type: "expense", amount: 50, remarks: "Groceries", date: "2023-06-15" },
     { id: 2, type: "income", amount: 2000, remarks: "Salary", date: "2023-06-01" },
     { id: 3, type: "expense", amount: 30, remarks: "Bus fare", date: "2023-06-10" },
@@ -63,9 +46,9 @@ export default function ExpenseTracker() {
   ])
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0)
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0)
-  const [currency, setCurrency] = useState<CurrencyCode>("USD")
+  const [currency, setCurrency] = useState("USD")
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [yearData, setYearData] = useState<MonthData[]>(generateYearData(selectedYear))
+  const [yearData, setYearData] = useState(generateYearData(selectedYear))
   const { toast } = useToast()
 
   useEffect(() => {
@@ -99,9 +82,9 @@ export default function ExpenseTracker() {
       return
     }
 
-    const newTransaction: Transaction = {
+    const newTransaction = {
       id: transactions.length + 1,
-      type: transactionType as Transaction['type'],
+      type: transactionType,
       amount: parseFloat(amount),
       remarks,
       date: new Date().toISOString().split('T')[0],
@@ -215,7 +198,7 @@ export default function ExpenseTracker() {
             <CardContent className="space-y-2">
               <div className="grid gap-2">
                 <Label htmlFor="transaction-type" className="text-xs">Type</Label>
-                <Select value={transactionType} onValueChange={(value: Transaction['type'] | "") => setTransactionType(value)}>
+                <Select value={transactionType} onValueChange={setTransactionType}>
                   <SelectTrigger id="transaction-type">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -293,7 +276,7 @@ export default function ExpenseTracker() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(Object.keys(currencies) as CurrencyCode[]).map((curr) => (
+              {Object.keys(currencies).map((curr) => (
                 <DropdownMenuItem key={curr} onClick={() => setCurrency(curr)}>
                   {curr} ({currencies[curr]})
                 </DropdownMenuItem>
