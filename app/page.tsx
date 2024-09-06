@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign } from "lucide-react"
+import { ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
