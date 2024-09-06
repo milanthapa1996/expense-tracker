@@ -44,31 +44,40 @@ type MonthData = {
   loan: number
 }
 
-const generateYearData = (year: number): MonthData[] => {
-  return Array.from({ length: 12 }, (_, i) => ({
+const generateYearData = (transactions: Transaction[], year: number): MonthData[] => {
+  const monthData = Array.from({ length: 12 }, (_, i) => ({
     name: new Date(year, i).toLocaleString('default', { month: 'short' }),
-    expense: Math.floor(Math.random() * 1000),
-    income: Math.floor(Math.random() * 1500),
-    loan: Math.floor(Math.random() * 500)
-  }))
+    expense: 0,
+    income: 0,
+    loan: 0
+  }));
+
+  transactions.forEach(transaction => {
+    const transactionDate = new Date(transaction.date);
+    if (transactionDate.getFullYear() === year) {
+      const month = transactionDate.getMonth();
+      monthData[month][transaction.type] += transaction.amount;
+    }
+  });
+
+  return monthData;
 }
 
 export default function ExpenseTracker() {
   const [amount, setAmount] = useState("")
   const [transactionType, setTransactionType] = useState<TransactionType | "">("")
   const [remarks, setRemarks] = useState("")
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: 1, type: "expense", amount: 50, remarks: "Groceries", date: "2023-06-15" },
-    { id: 2, type: "income", amount: 2000, remarks: "Salary", date: "2023-06-01" },
-    { id: 3, type: "expense", amount: 30, remarks: "Bus fare", date: "2023-06-10" },
-    { id: 4, type: "loan", amount: 500, remarks: "Personal loan", date: "2023-06-05" },
-  ])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0)
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0)
   const [currency, setCurrency] = useState<CurrencyCode>("USD")
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [yearData, setYearData] = useState<MonthData[]>(generateYearData(selectedYear))
+  const [yearData, setYearData] = useState<MonthData[]>([])
   const { toast } = useToast()
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
   useEffect(() => {
     const now = new Date()
@@ -85,13 +94,25 @@ export default function ExpenseTracker() {
 
     setCurrentMonthIncome(monthlyIncome)
     setCurrentMonthExpense(monthlyExpense)
-  }, [transactions])
+    setYearData(generateYearData(transactions, selectedYear))
+  }, [transactions, selectedYear])
 
-  useEffect(() => {
-    setYearData(generateYearData(selectedYear))
-  }, [selectedYear])
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch('/api/transactions');
+      const data = await response.json();
+      setTransactions(data);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch transactions",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const addTransaction = () => {
+  const addTransaction = async () => {
     if (!amount || !transactionType || !remarks) {
       toast({
         title: "Error",
@@ -102,23 +123,43 @@ export default function ExpenseTracker() {
     }
 
     const newTransaction: Transaction = {
-      id: transactions.length + 1,
+      id: Date.now(),
       type: transactionType,
       amount: parseFloat(amount),
       remarks,
       date: new Date().toISOString().split('T')[0],
     }
 
-    setTransactions([newTransaction, ...transactions])
-    setAmount("")
-    setTransactionType("")
-    setRemarks("")
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newTransaction),
+      });
 
-    toast({
-      title: "Success",
-      description: `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} added successfully`,
-      className:"z-50 bg-white"
-    })
+      if (response.ok) {
+        setTransactions([newTransaction, ...transactions])
+        setAmount("")
+        setTransactionType("")
+        setRemarks("")
+
+        toast({
+          title: "Success",
+          description: `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} added successfully`,
+        })
+      } else {
+        throw new Error('Failed to add transaction');
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add transaction",
+        variant: "destructive",
+      });
+    }
   }
 
   const totalSavings = transactions.reduce((acc, transaction) => {
