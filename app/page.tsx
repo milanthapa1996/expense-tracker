@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign } from "lucide-react"
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -27,9 +27,11 @@ const currencies = {
 
 type CurrencyCode = keyof typeof currencies
 
+type TransactionType = 'income' | 'expense' | 'loan'
+
 type Transaction = {
   id: number
-  type: 'income' | 'expense' | 'loan'
+  type: TransactionType
   amount: number
   remarks: string
   date: string
@@ -51,9 +53,9 @@ const generateYearData = (year: number): MonthData[] => {
   }))
 }
 
-export default function Home() {
+export default function ExpenseTracker() {
   const [amount, setAmount] = useState("")
-  const [transactionType, setTransactionType] = useState<Transaction['type'] | "">("")
+  const [transactionType, setTransactionType] = useState<TransactionType | "">("")
   const [remarks, setRemarks] = useState("")
   const [transactions, setTransactions] = useState<Transaction[]>([
     { id: 1, type: "expense", amount: 50, remarks: "Groceries", date: "2023-06-15" },
@@ -101,7 +103,7 @@ export default function Home() {
 
     const newTransaction: Transaction = {
       id: transactions.length + 1,
-      type: transactionType as Transaction['type'],
+      type: transactionType,
       amount: parseFloat(amount),
       remarks,
       date: new Date().toISOString().split('T')[0],
@@ -215,7 +217,10 @@ export default function Home() {
             <CardContent className="space-y-2">
               <div className="grid gap-2">
                 <Label htmlFor="transaction-type" className="text-xs">Type</Label>
-                <Select value={transactionType} onValueChange={(value: Transaction['type'] | "") => setTransactionType(value)}>
+                <Select
+                  value={transactionType}
+                  onValueChange={(value: TransactionType) => setTransactionType(value)}
+                >
                   <SelectTrigger id="transaction-type">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
