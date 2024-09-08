@@ -20,45 +20,52 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { db, auth } from '@/lib/firebase'
-import { currencies, CurrencyCode, Transaction, TransactionType, MonthData, generateYearData } from '@/lib/types'
 
-function LoginPage({ onLogin }: { onLogin: () => void }) {
-  const { toast } = useToast()
+const currencies = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+  NPR: "रु"
+} as const
 
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider()
-    try {
-      await signInWithPopup(auth, provider)
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      })
-      onLogin()
-    } catch (error) {
-      console.error('Login error:', error)
-      toast({
-        title: "Error",
-        description: "Failed to log in. Please try again.",
-        variant: "destructive",
-      })
+type CurrencyCode = keyof typeof currencies
+
+type TransactionType = 'income' | 'expense' | 'loan'
+
+type Transaction = {
+  id: string
+  type: TransactionType
+  amount: number
+  remarks: string
+  date: string
+  userId: string
+}
+
+type MonthData = {
+  name: string
+  expense: number
+  income: number
+  loan: number
+}
+
+const generateYearData = (transactions: Transaction[], year: number): MonthData[] => {
+  const monthData = Array.from({ length: 12 }, (_, i) => ({
+    name: new Date(year, i).toLocaleString('default', { month: 'short', year: 'numeric' }),
+    expense: 0,
+    income: 0,
+    loan: 0
+  }));
+
+  transactions.forEach(transaction => {
+    const transactionDate = new Date(transaction.date);
+    if (transactionDate.getFullYear() === year) {
+      const month = transactionDate.getMonth();
+      monthData[month][transaction.type] += transaction.amount;
     }
-  }
+  });
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Expense Tracker</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center mb-4">Please log in to access your dashboard</p>
-          <Button onClick={handleLogin} className="w-full">
-            <LogIn className="mr-2 h-4 w-4" /> Login with Google
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  )
+  return monthData;
 }
 
 export default function ExpenseTracker() {
@@ -68,7 +75,7 @@ export default function ExpenseTracker() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0)
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0)
-  const [currency, setCurrency] = useState<CurrencyCode>("USD")
+  const [currency, setCurrency] = useState<CurrencyCode>("NPR")
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [yearData, setYearData] = useState<MonthData[]>([])
   const [user, setUser] = useState<User | null>(null)
@@ -150,6 +157,7 @@ export default function ExpenseTracker() {
       toast({
         title: "Success",
         description: `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} added successfully`,
+        className: "z-50 bg-white"
       })
     } catch (error) {
       console.error('Error adding transaction:', error)
@@ -173,6 +181,23 @@ export default function ExpenseTracker() {
 
   const currentMonth = new Date().toLocaleString('default', { month: 'short' })
 
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider()
+    try {
+      await signInWithPopup(auth, provider)
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log in",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -181,7 +206,6 @@ export default function ExpenseTracker() {
         description: "Logged out successfully",
       })
     } catch (error) {
-      console.error('Logout error:', error)
       toast({
         title: "Error",
         description: "Failed to log out",
@@ -190,19 +214,21 @@ export default function ExpenseTracker() {
     }
   }
 
-  if (!user) {
-    return <LoginPage onLogin={() => {}} />
-  }
-
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md bg-white shadow-lg rounded-lg overflow-hidden relative">
         <div className="p-4 space-y-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Expense Tracker</h1>
-            <Button onClick={handleLogout} variant="outline" size="sm">
-              <LogOut className="mr-2 h-4 w-4" /> Logout
-            </Button>
+            {user ? (
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="mr-2 h-4 w-4" /> Logout
+              </Button>
+            ) : (
+              <Button onClick={handleLogin} variant="outline" size="sm">
+                <LogIn className="mr-2 h-4 w-4" /> Login
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-2">
@@ -277,51 +303,53 @@ export default function ExpenseTracker() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Add Transaction</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid gap-2">
-                <Label htmlFor="transaction-type" className="text-xs">Type</Label>
-                <Select
-                  value={transactionType}
-                  onValueChange={(value: TransactionType) => setTransactionType(value)}
-                >
-                  <SelectTrigger id="transaction-type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
-                    <SelectItem value="loan">Loan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="amount" className="text-xs">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="remarks" className="text-xs">Remarks</Label>
-                <Input
-                  id="remarks"
-                  placeholder="Enter remarks"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full text-sm" onClick={addTransaction}>Add Transaction</Button>
-            </CardFooter>
-          </Card>
+          {user && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Add Transaction</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="transaction-type" className="text-xs">Type</Label>
+                  <Select
+                    value={transactionType}
+                    onValueChange={(value: TransactionType) => setTransactionType(value)}
+                  >
+                    <SelectTrigger id="transaction-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expense</SelectItem>
+                      <SelectItem value="loan">Loan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="amount" className="text-xs">Amount</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="Enter amount"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="remarks" className="text-xs">Remarks</Label>
+                  <Input
+                    id="remarks"
+                    placeholder="Enter remarks"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full text-sm" onClick={addTransaction}>Add Transaction</Button>
+              </CardFooter>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
