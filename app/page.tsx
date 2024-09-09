@@ -17,6 +17,7 @@ import {
   DollarSign,
   LogIn,
   LogOut,
+  CalendarIcon,
 } from "lucide-react";
 import {
   collection,
@@ -59,6 +60,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 import { db, auth } from "@/app/firebase/config";
 import {
@@ -72,62 +77,17 @@ import {
 import Link from "next/link";
 import Login from "./login/page";
 
-// function LoginPage({ onLogin }: { onLogin: () => void }) {
-//   const { toast } = useToast();
-
-//   const handleLogin = async () => {
-//     const provider = new GoogleAuthProvider();
-//     try {
-//       await signInWithPopup(auth, provider);
-//       toast({
-//         title: "Success",
-//         description: "Logged in successfully",
-//         className: "bg-white text-green-500",
-//         variant: "default",
-//       });
-//       onLogin();
-//     } catch (error) {
-//       console.error("Login error:", error);
-//       toast({
-//         title: "Error",
-//         description: "Failed to log in. Please try again.",
-//         variant: "destructive",
-//       });
-//     }
-//   };
-
-//   return (
-//     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-//       <Card className="w-[350px]">
-//         <CardHeader>
-//           <CardTitle className="text-2xl font-bold text-center">
-//             Expense Tracker
-//           </CardTitle>
-//         </CardHeader>
-//         <CardContent>
-//           <p className="text-center mb-4">
-//             Please log in to access your dashboard
-//           </p>
-//           <Button onClick={handleLogin} className="w-full">
-//             <LogIn className="mr-2 h-4 w-4" /> Login with Google
-//           </Button>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// }
-
-export default function ExpenseTracker() {
+export default function Page() {
   const [amount, setAmount] = useState("");
   const [transactionType, setTransactionType] = useState<TransactionType | "">(
     ""
   );
   const [remarks, setRemarks] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0);
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0);
-  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [currency, setCurrency] = useState<CurrencyCode>("NPR");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearData, setYearData] = useState<MonthData[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -207,14 +167,14 @@ export default function ExpenseTracker() {
         type: transactionType,
         amount: parseFloat(amount),
         remarks,
-        date,
+        date: date.toISOString(),
         createdAt: Timestamp.now(),
       });
 
       setAmount("");
       setTransactionType("");
       setRemarks("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(new Date());
 
       toast({
         title: "Success",
@@ -264,7 +224,7 @@ export default function ExpenseTracker() {
   };
 
   if (!user) {
-    return <Login/>
+    return <Login />;
   }
 
   return (
@@ -456,12 +416,28 @@ export default function ExpenseTracker() {
                 <Label htmlFor="date" className="text-xs">
                   Date
                 </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </CardContent>
             <CardFooter>
@@ -477,7 +453,7 @@ export default function ExpenseTracker() {
                 Recent Transactions
                 <Link
                   href="/transactions"
-                  className="text-xs font-medium text-muted-foreground hover:text-primary float-right"
+                  className="text-xs font-medium text-blue-500 hover:text-primary float-right"
                 >
                   View All
                 </Link>
@@ -509,7 +485,9 @@ export default function ExpenseTracker() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{transaction.remarks}</p>
-                      <p className="text-gray-500">{transaction.date}</p>
+                      <p className="text-gray-500">
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </p>
                     </div>
                     <p
                       className={`font-medium ${
