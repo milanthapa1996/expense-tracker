@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
 import { useState, useEffect } from "react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign, LogIn, LogOut } from "lucide-react"
+import { ArrowDownCircle, ArrowUpCircle, PiggyBank, Wallet, DollarSign, LogIn, LogOut, Loader2 } from "lucide-react"
 import { collection, addDoc, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore'
 import { signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth'
 
@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { db, auth } from '@/lib/firebase'
+import { db, auth } from '@/app/firebase/config'
 import { currencies, CurrencyCode, Transaction, TransactionType, MonthData, generateYearData } from '@/lib/types'
 
 function LoginPage({ onLogin }: { onLogin: () => void }) {
@@ -32,6 +32,7 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
       toast({
         title: "Success",
         description: "Logged in successfully",
+        className: "bg-white text-green-500",
       })
       onLogin()
     } catch (error) {
@@ -61,10 +62,22 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
   )
 }
 
+function LoadingPage() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <p className="text-lg font-medium">Loading your dashboard...</p>
+      </div>
+    </div>
+  )
+}
+
 export default function ExpenseTracker() {
   const [amount, setAmount] = useState("")
   const [transactionType, setTransactionType] = useState<TransactionType | "">("")
   const [remarks, setRemarks] = useState("")
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0)
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0)
@@ -72,6 +85,7 @@ export default function ExpenseTracker() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [yearData, setYearData] = useState<MonthData[]>([])
   const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -82,6 +96,7 @@ export default function ExpenseTracker() {
       } else {
         setTransactions([])
       }
+      setLoading(false)
     })
 
     return () => unsubscribe()
@@ -107,8 +122,7 @@ export default function ExpenseTracker() {
 
   const loadTransactions = (userId: string) => {
     const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', userId),
+      collection(db, `users/${userId}/transactions`),
       orderBy('date', 'desc'),
       limit(100)
     )
@@ -125,7 +139,7 @@ export default function ExpenseTracker() {
   }
 
   const addTransaction = async () => {
-    if (!amount || !transactionType || !remarks || !user) {
+    if (!amount || !transactionType || !remarks || !user || !date) {
       toast({
         title: "Error",
         description: "Please fill in all fields and ensure you're logged in",
@@ -135,21 +149,23 @@ export default function ExpenseTracker() {
     }
 
     try {
-      await addDoc(collection(db, 'transactions'), {
+      await addDoc(collection(db, `users/${user.uid}/transactions`), {
         type: transactionType,
         amount: parseFloat(amount),
         remarks,
-        date: new Date().toISOString().split('T')[0],
-        userId: user.uid
+        date,
+        createdAt: Timestamp.now(),
       })
 
       setAmount("")
       setTransactionType("")
       setRemarks("")
+      setDate(new Date().toISOString().split('T')[0])
 
       toast({
         title: "Success",
         description: `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} added successfully`,
+        className: "bg-white text-green-500",
       })
     } catch (error) {
       console.error('Error adding transaction:', error)
@@ -179,6 +195,7 @@ export default function ExpenseTracker() {
       toast({
         title: "Success",
         description: "Logged out successfully",
+        className: "bg-white text-green-500",
       })
     } catch (error) {
       console.error('Logout error:', error)
@@ -190,8 +207,12 @@ export default function ExpenseTracker() {
     }
   }
 
+  if (loading) {
+    return <LoadingPage />
+  }
+
   if (!user) {
-    return <LoginPage onLogin={() => {}} />
+    return <LoginPage onLogin={() => setLoading(true)} />
   }
 
   return (
@@ -315,6 +336,15 @@ export default function ExpenseTracker() {
                   placeholder="Enter remarks"
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="date" className="text-xs">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                 />
               </div>
             </CardContent>
