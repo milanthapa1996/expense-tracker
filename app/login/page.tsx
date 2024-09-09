@@ -9,6 +9,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import Image from 'next/image';
 
 export default function Login() {
   const [user, loading] = useAuthState(auth);
@@ -41,7 +42,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-[350px]">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Kharchapani</CardTitle>
+          <Image src={"/money.png"} alt="logo" height={60}width={60} quality={100} className='mx-auto' />
+          <CardTitle className="text-2xl font-bold text-center">
+            Kharchapani
+          </CardTitle>
           <CardDescription className="text-center">Sign in to manage your expenses</CardDescription>
         </CardHeader>
         <CardContent>
